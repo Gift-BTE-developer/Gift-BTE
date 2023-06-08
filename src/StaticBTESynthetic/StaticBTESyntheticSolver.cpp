@@ -23,7 +23,7 @@ void StaticBTESynthetic::solve(int Use_Backup, int Num_Max_Iter, int Use_Limiter
         }
     }
     _get_coefficient_macro();
-    _set_bound_ee_1();
+
 
     auto total_iter_time = chrono::microseconds(0);
     auto get_gradient_time = chrono::microseconds(0);
@@ -40,7 +40,14 @@ void StaticBTESynthetic::solve(int Use_Backup, int Num_Max_Iter, int Use_Limiter
 
     _get_face_matrix();
     _get_CellMatrix_larger();
+    for (int inf_local = 0; inf_local < numDirectionLocal; inf_local++) {
+        for (int iband_local = 0; iband_local < numBandLocal; ++iband_local) {
+            _get_gradient_larger(Use_Limiter,iband_local,inf_local);
+            _get_bound_ee(iband_local,inf_local);
+        }
 
+    }
+    _set_bound_ee_1();
     for (int nt = 0; nt < Num_Max_Iter; ++nt)
     {
         total_iter_time = chrono::microseconds(0);
@@ -68,6 +75,7 @@ void StaticBTESynthetic::solve(int Use_Backup, int Num_Max_Iter, int Use_Limiter
 
                 auto get_Re_start =chrono::high_resolution_clock::now();
                 _get_Re(iband_local,inf_local);
+
                 auto get_Re_end =chrono::high_resolution_clock::now();
                 get_Re_time+=chrono::duration_cast<chrono::microseconds>(get_Re_end - get_Re_start);
 
