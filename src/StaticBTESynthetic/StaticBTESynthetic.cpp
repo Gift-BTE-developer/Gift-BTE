@@ -77,6 +77,8 @@ StaticBTESynthetic::~StaticBTESynthetic()
     delete [] temperatureLocal;
     delete [] temperatureVertex;
     delete [] temperature1;
+    delete [] temperatureband;
+    delete [] temperaturebandLocal;
 
     delete [] totalEnergy;
     delete [] totalEnergyLocal;
@@ -312,6 +314,8 @@ StaticBTESynthetic::StaticBTESynthetic(BTEMesh *mesh, BTEBoundaryCondition *bcs,
     temperatureOld = new double[numCell];
     temperatureVertex=new double [numNode*numofMatter];
     temperature1=new double [numCell];
+    temperatureband = new double[numCell*numBand];
+    temperaturebandLocal = new double[numCell*numBand];
 
     totalEnergyLocal = new double[numCell];
     totalEnergy = new double[numCell];
@@ -768,7 +772,7 @@ void StaticBTESynthetic::_set_initial(int Use_Backup) const
             int iband = iband_local * (ceil(double(numProc) / double(numDirection))) + worldRank / numDirection;
             for (int kk = 0; kk < numCell; kk++)
             {
-                energyDensity[iband_local][inf_local][kk]= temperature[kk] * heatCapacity[matter[kk]][iband_local][inf_local];
+                energyDensity[iband_local][inf_local][kk]= temperature[kk] * heatCapacity[matter[kk]][iband][inf];
             }
         }
 
@@ -2487,6 +2491,7 @@ void StaticBTESynthetic::_recover_temperature(int iband_local, int inf_local) co
     for (int ie = 0; ie < numCell; ++ie)
     {
         temperatureLocal[ie] += latticeRatio[matter[ie]][iband][inf] * energyDensity[iband_local][inf_local][ie] * modeWeight[matter[ie]][iband][inf] / heatCapacity[matter[ie]][iband][inf];
+        temperaturebandLocal[iband*numCell+ie] += energyDensity[iband_local][inf_local][ie] * modeWeight[matter[ie]][iband][inf] / heatCapacity[matter[ie]][iband][inf];
     }
 }
 
@@ -2497,7 +2502,6 @@ void StaticBTESynthetic::_get_total_energy(int iband_local, int inf_local) const
     for (int ie = 0; ie < numCell; ++ie)
     {
         totalEnergyLocal[ie] += energyDensity[iband_local][inf_local][ie] * modeWeight[matter[ie]][iband][inf] / capacityBulk[matter[ie]];
-        
     }
 }
 
@@ -2613,6 +2617,15 @@ void StaticBTESynthetic::_print_out() const
         output << elementCenterX[i] << " " << elementCenterY[i] << " " << elementCenterZ[i] << " " << temperature[i] << endl;
     }
     output.close();
+    ofstream outputb("Tempband.dat");
+    for (int j = 0; j < numBand; ++j)
+    {
+        for (int i = 0; i < numCell; ++i)
+        {
+            outputb << j+1 << " " << elementCenterX[i] << " " << elementCenterY[i] << " " << elementCenterZ[i] << " " << temperatureband[j*numCell+i] << endl;
+        }
+    }
+    outputb.close();
     ofstream output1("Temperature.dat");
     for (int i = 0; i < numCell; ++i)
     {
@@ -2660,6 +2673,14 @@ void StaticBTESynthetic::copy() const
         heatFluxZGlobal[i] = 0;
         ReMacroLocal[i]=0;
 
+    }
+    for (int i = 0; i < numCell; ++i)
+    {
+        for (int j = 0; j < numBand; ++j)
+        {
+            temperatureband[j*numCell+i] = 0;
+            temperaturebandLocal[j*numCell+i] = 0;
+        }
     }
     for (int i = 0; i < numBandLocal * numBound * 2; ++i)
     {
